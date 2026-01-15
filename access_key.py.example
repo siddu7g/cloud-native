@@ -1,0 +1,86 @@
+import os
+import requests
+
+# Set your API key as an environment variable: OPENROUTER_API_KEY
+# Or create a .env file with: OPENROUTER_API_KEY=your_key_here
+API_KEY = os.getenv("OPENROUTER_API_KEY")
+if not API_KEY:
+    raise ValueError("Please set OPENROUTER_API_KEY environment variable")
+
+MODEL = "mistralai/devstral-2512:free"
+
+def call_model(prompt: str):
+    """Call the AI model with a prompt and return the response."""
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": MODEL,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+        },
+    )
+    response.raise_for_status()  # Raise an error for bad status codes
+    return response.json()
+
+def prompt_model(prompt: str):
+    """Prompt the model and print the response."""
+    try:
+        result = call_model(prompt)
+        
+        # Debug: print full response if needed (uncomment to debug)
+        # print(f"DEBUG - Full response: {result}")
+        
+        if "choices" in result and len(result["choices"]) > 0:
+            content = result["choices"][0]["message"]["content"]
+            print(content)
+            return content
+        else:
+            print(f"Error: Unexpected response format: {result}")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling API: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response body: {e.response.text}")
+        return None
+    except Exception as e:
+        print(f"Error calling model: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+if __name__ == "__main__":
+    print("AI Model Pipeline - Enter your prompts (type 'quit' or 'exit' to stop)\n")
+    
+    while True:
+        try:
+            # Get user input
+            user_prompt = input("You: ").strip()
+            
+            # Check for exit commands
+            if user_prompt.lower() in ['quit', 'exit', 'q']:
+                print("\nGoodbye!")
+                break
+            
+            # Skip empty prompts
+            if not user_prompt:
+                continue
+            
+            # Call the model and print response
+            print("\nAI: ", end="", flush=True)
+            response = prompt_model(user_prompt)
+            if response:
+                print()  # Add blank line for readability
+            else:
+                print("(No response received)\n")
+            
+        except KeyboardInterrupt:
+            print("\n\nGoodbye!")
+            break
+        except Exception as e:
+            print(f"\nError: {e}\n")
